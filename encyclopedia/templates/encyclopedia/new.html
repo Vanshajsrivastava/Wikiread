@@ -1,22 +1,36 @@
 {% extends "encyclopedia/layout.html" %}
 
-{% block title %}
-    Encyclopedia
-{% endblock %}
+{% block title %}Create Entry{% endblock %}
 
 {% block body %}
-    <h1>New Page</h1>
-    
-    <form action ="{%  url 'new_page' %}" Method ="POST">
-        {% csrf_token %}
-       <label>Title:</label>
-    <input type ="text" name ="title" placeholder ="Enter a title ">
-    </br>
-    <label>Markdown Content:</label>
-    </br>
-    <textarea name ="content"></textarea>
-    </br>
-    <input type="submit" value ="New Page" class ="btn btn-primary" >
-</form>
+<section class="page-header compact">
+    <p class="eyebrow">Authoring</p>
+    <h1>Create New Entry</h1>
+    <p class="lead">Draft markdown on the left and validate rendering live on the right.</p>
+</section>
 
+{% if message %}
+    <div class="alert-box">{{ message }}</div>
+{% endif %}
+
+<form action="{% url 'new_page' %}" method="post" class="content-card editor-shell" data-markdown-editor data-preview-url="{% url 'preview_markdown' %}">
+    {% csrf_token %}
+    <label for="title">Title</label>
+    <input id="title" type="text" name="title" placeholder="Page title" value="{{ title|default:'' }}" required>
+
+    <div class="editor-grid">
+        <div>
+            <label for="content">Markdown</label>
+            <textarea id="content" name="content" required>{{ content|default:'' }}</textarea>
+        </div>
+        <div>
+            <label>Preview</label>
+            <div class="preview-pane" data-preview-target></div>
+        </div>
+    </div>
+
+    <div class="actions-row">
+        <button type="submit" class="btn-primary">Publish Entry</button>
+    </div>
+</form>
 {% endblock %}

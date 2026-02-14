@@ -1,37 +1,50 @@
-import re
+from typing import List, Optional
 
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
+from django.db.models import Q
 
-
-def list_entries():
-    """
-    Returns a list of all names of encyclopedia entries.
-    """
-    _, filenames = default_storage.listdir("entries")
-    return list(sorted(re.sub(r"\.md$", "", filename)
-                for filename in filenames if filename.endswith(".md")))
+from .models import Entry
 
 
-def save_entry(title, content):
-    """
-    Saves an encyclopedia entry, given its title and Markdown
-    content. If an existing entry with the same title already exists,
-    it is replaced.
-    """
-    filename = f"entries/{title}.md"
-    if default_storage.exists(filename):
-        default_storage.delete(filename)
-    default_storage.save(filename, ContentFile(content))
+def list_entries() -> List[str]:
+    """Returns a sorted list of entry titles."""
+    return list(Entry.objects.values_list("title", flat=True))
 
 
-def get_entry(title):
-    """
-    Retrieves an encyclopedia entry by its title. If no such
-    entry exists, the function returns None.
-    """
-    try:
-        f = default_storage.open(f"entries/{title}.md")
-        return f.read().decode("utf-8")
-    except FileNotFoundError:
-        return None
+def save_entry(title: str, content: str, creator=None) -> Entry:
+    """Creates or updates an entry by title (case-insensitive)."""
+    existing = Entry.objects.filter(title__iexact=title).first()
+    if existing:
+        existing.content = content
+        existing.save(update_fields=["content", "updated_at"])
+        return existing
+
+    return Entry.objects.create(title=title, content=content, created_by=creator)
+
+
+def get_entry(title: str) -> Optional[str]:
+    """Returns markdown content for an entry title, or None."""
+    entry = Entry.objects.filter(title__iexact=title).first()
+    return None if entry is None else entry.content
+
+
+def get_entry_obj(title: str) -> Optional[Entry]:
+    """Returns the entry object for an entry title, or None."""
+    return Entry.objects.filter(title__iexact=title).first()
+
+
+def search_entries(query: str) -> List[Entry]:
+    """Returns entries with title or content containing query (case-insensitive)."""
+    return list(
+        Entry.objects.filter(Q(title__icontains=query) | Q(content__icontains=query))
+        .distinct()
+        .order_by("title")
+    )
+
+
+def delete_entry(title: str) -> bool:
+    """Deletes an entry by title (case-insensitive). Returns True if deleted."""
+    entry = Entry.objects.filter(title__iexact=title).first()
+    if entry is None:
+        return False
+    entry.delete()
+    return True

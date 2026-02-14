@@ -1,0 +1,28 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}Audit Logs{% endblock %}
+
+{% block body %}
+<section class="page-header compact">
+    <p class="eyebrow">Moderation</p>
+    <h1>Audit Logs</h1>
+    <p class="lead">Latest tracked actions across create, edit, rollback, lock, unlock, and delete operations.</p>
+</section>
+
+<section class="content-card">
+    <ul class="simple-list">
+        {% for log in logs %}
+            <li class="stacked-item">
+                <div>
+                    <strong>{{ log.get_action_display }} • {{ log.entry_title }}</strong>
+                    <p>Actor: {% if log.actor %}{{ log.actor.username }}{% else %}System{% endif %}</p>
+                    {% if log.details %}<p>{{ log.details }}</p>{% endif %}
+                </div>
+                <span>{{ log.created_at|date:"Y-m-d H:i" }}</span>
+            </li>
+        {% empty %}
+            <li>No logs found.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

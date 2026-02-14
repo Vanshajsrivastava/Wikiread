@@ -1,0 +1,42 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}Dispute Queue{% endblock %}
+
+{% block body %}
+<section class="page-header compact">
+    <p class="eyebrow">Moderation</p>
+    <h1>Dispute Queue</h1>
+    <p class="lead">Review disputed claims and resolve each report with an outcome.</p>
+</section>
+
+<section class="content-card">
+    <ul class="simple-list">
+        {% for dispute in disputes %}
+            <li class="stacked-item">
+                <div>
+                    <strong>{{ dispute.entry.title }} • {{ dispute.get_status_display }}</strong>
+                    <p>Reported by {% if dispute.reported_by %}{{ dispute.reported_by.username }}{% else %}Unknown{% endif %} on {{ dispute.created_at|date:"Y-m-d H:i" }}</p>
+                    <p>{{ dispute.message }}</p>
+                    {% if dispute.resolution_note %}
+                        <p>Resolution: {{ dispute.resolution_note }}</p>
+                    {% endif %}
+                </div>
+
+                {% if dispute.status == "open" %}
+                    <form action="{% url 'resolve_dispute' dispute_id=dispute.id %}" method="post" class="lock-form">
+                        {% csrf_token %}
+                        <select name="resolution">
+                            <option value="resolved">Resolve</option>
+                            <option value="rejected">Reject</option>
+                        </select>
+                        <input type="text" name="resolution_note" placeholder="Optional moderator note">
+                        <button type="submit" class="btn-secondary">Submit</button>
+                    </form>
+                {% endif %}
+            </li>
+        {% empty %}
+            <li>No disputes found.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

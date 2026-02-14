@@ -1,38 +1,105 @@
 {% load static %}
 
 <!DOCTYPE html>
-
 <html lang="en">
     <head>
-        <title>{% block title %}{% endblock %}</title>
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}Wikiread{% endblock %}</title>
+        <script>
+            (function () {
+                var savedTheme = localStorage.getItem("wikiread-theme");
+                var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                var theme = savedTheme || (prefersDark ? "dark" : "light");
+                document.documentElement.setAttribute("data-theme", theme);
+            })();
+        </script>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+        <link rel="icon" type="image/svg+xml" href="{% static 'encyclopedia/favicon.svg' %}">
+        <link rel="shortcut icon" href="{% static 'encyclopedia/favicon.svg' %}">
         <link href="{% static 'encyclopedia/styles.css' %}" rel="stylesheet">
     </head>
     <body>
-        <div class="row">
-            <div class="sidebar col-lg-2 col-md-3">
-                <h2>Wiki</h2>
-                <form action="{% url 'search' %}" method ="POST">
-                    {% csrf_token %}
-                    <input class="search" type="text" name="q" placeholder="Search Encyclopedia">
+        <div class="bg-orb bg-orb-a"></div>
+        <div class="bg-orb bg-orb-b"></div>
+
+        <header class="mobile-topbar">
+            <a class="brand" href="{% url 'index' %}">
+                <img src="{% static 'encyclopedia/brand-mark.svg' %}" alt="WikiRead" class="brand-mark">
+                <strong>WikiRead</strong>
+            </a>
+            <div class="mobile-actions">
+                <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle color theme" title="Toggle theme">
+                    <span class="theme-icon" data-theme-icon aria-hidden="true"></span>
+                </button>
+                <button type="button" class="icon-button" data-sidebar-toggle aria-label="Open navigation menu" title="Menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </header>
+
+        <div class="app-frame">
+            <aside class="sidebar" data-sidebar>
+                <a class="brand" href="{% url 'index' %}">
+                    <img src="{% static 'encyclopedia/brand-mark.svg' %}" alt="WikiRead icon" class="brand-mark">
+                    <span>
+                        <strong>WikiRead</strong>
+                        <small>Knowledge workspace</small>
+                    </span>
+                </a>
+                <img src="{% static 'encyclopedia/brand-full.svg' %}" alt="WikiRead full logo" class="brand-full">
+
+                <form action="{% url 'search' %}" method="get" class="search-form">
+                    <label for="wiki-search">Search</label>
+                    <input id="wiki-search" class="search-input" type="text" name="q" placeholder="Search title or content" value="{{ request.GET.q|default:'' }}">
                 </form>
-                <div>
-                    <a href="{% url 'index' %}">Home</a>
+
+                <nav class="nav-links">
+                    <a href="{% url 'index' %}">Library</a>
+                    {% if request.user.is_authenticated %}
+                        <a href="{% url 'new_page' %}">Create</a>
+                        <a href="{% url 'dashboard' %}">Dashboard</a>
+                    {% endif %}
+                    <a href="{% url 'rand' %}">Random</a>
+                    {% if request.user.is_superuser %}
+                        <a href="{% url 'audit_logs' %}">Audit Logs</a>
+                        <a href="{% url 'disputes_queue' %}">Disputes</a>
+                    {% endif %}
+                </nav>
+
+                <div class="auth-box">
+                    {% if request.user.is_authenticated %}
+                        <p class="auth-user">{{ request.user.username }}</p>
+                        <p class="auth-role">{% if request.user.is_superuser %}Superuser{% else %}Member{% endif %}</p>
+                        <form action="{% url 'logout' %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-secondary">Logout</button>
+                        </form>
+                    {% else %}
+                        <p>Login is required to create and edit pages.</p>
+                        <div class="actions-row">
+                            <a href="{% url 'login' %}" class="btn-primary">Login</a>
+                            <a href="{% url 'register' %}" class="btn-secondary">Sign Up</a>
+                        </div>
+                    {% endif %}
                 </div>
-                <div>
-                    <a href="{% url 'new_page' %}">create New Page</a>
-                </div>
-                <div>
-                    <a href="{% url 'rand' %}">Random page</a>
-                </div>
-                {% block nav %}
-                {% endblock %}
-            </div>
-            <div class="main col-lg-10 col-md-9">
-                {% block body %}
-                {% endblock %}
-            </div>
+
+                <button type="button" class="theme-toggle desktop-only" data-theme-toggle aria-label="Toggle color theme" title="Toggle theme">
+                    <span class="theme-icon" data-theme-icon aria-hidden="true"></span>
+                </button>
+
+                {% block nav %}{% endblock %}
+            </aside>
+
+            <main class="main-panel">
+                {% block body %}{% endblock %}
+            </main>
         </div>
 
+        <script src="{% static 'encyclopedia/editor_preview.js' %}"></script>
+        <script src="{% static 'encyclopedia/theme_toggle.js' %}"></script>
+        <script src="{% static 'encyclopedia/sidebar_toggle.js' %}"></script>
     </body>
 </html>

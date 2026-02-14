@@ -1,17 +1,79 @@
 {% extends "encyclopedia/layout.html" %}
 
-{% block title %}
-   {{ title }}
-{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block body %}
+<section class="page-header compact">
+    <div class="entry-headline">
+        <p class="eyebrow">Entry</p>
+        <h1>{{ title }}</h1>
+        <p class="lead">Owner: {{ entry_owner }}{% if is_locked %} • Locked by {{ locked_by }}{% endif %}</p>
+        <p class="chip">Verification: {{ verification_status_label }}</p>
+        {% if verification_note %}
+            <p class="lead">Verification note: {{ verification_note }}</p>
+        {% endif %}
+        {% if verification_status == "verified" %}
+            <p class="lead">Verified by {{ verified_by }}</p>
+        {% endif %}
+        {% if open_disputes_count > 0 %}
+            <p class="chip warning">Open disputes: {{ open_disputes_count }}</p>
+        {% endif %}
+        {% if is_locked %}
+            <p class="chip warning">Locked{% if lock_reason %}: {{ lock_reason }}{% endif %}</p>
+        {% endif %}
+    </div>
 
-{{ content|safe }}
-<form action = "{% url 'edit' %}" method= "POST">
-    {% csrf_token %}
-<input type ="hidden", name="entry_title" value="{{ title }}">
-<input type ="submit" value="Edit" class="btn btn-danger">
-</form>
+    <div class="actions-row">
+        {% if request.user.is_authenticated %}
+            <a href="{% url 'edit' title=title %}" class="btn-primary">Edit</a>
+            <a href="{% url 'revisions' title=title %}" class="btn-secondary">History</a>
+        {% endif %}
+        <a href="{% url 'rand' %}" class="btn-secondary">Random</a>
 
+        {% if can_delete %}
+            <form action="{% url 'delete_entry' title=title %}" method="post" onsubmit="return confirm('Delete this page permanently?');">
+                {% csrf_token %}
+                <button type="submit" class="btn-danger">Delete</button>
+            </form>
+        {% endif %}
+    </div>
 
+    {% if can_moderate %}
+        <form class="lock-form" action="{% url 'toggle_lock' title=title %}" method="post">
+            {% csrf_token %}
+            {% if is_locked %}
+                <button type="submit" class="btn-secondary">Unlock Page</button>
+            {% else %}
+                <input type="text" name="lock_reason" placeholder="Optional lock reason">
+                <button type="submit" class="btn-secondary">Lock Page</button>
+            {% endif %}
+        </form>
+
+        <form class="lock-form" action="{% url 'set_verification_status' title=title %}" method="post">
+            {% csrf_token %}
+            <label for="verification_status">Verification status</label>
+            <select id="verification_status" name="verification_status">
+                <option value="draft" {% if verification_status == "draft" %}selected{% endif %}>Draft</option>
+                <option value="under_review" {% if verification_status == "under_review" %}selected{% endif %}>Under Review</option>
+                <option value="verified" {% if verification_status == "verified" %}selected{% endif %}>Verified</option>
+                <option value="disputed" {% if verification_status == "disputed" %}selected{% endif %}>Disputed</option>
+            </select>
+            <input type="text" name="verification_note" placeholder="Verification note (optional)">
+            <button type="submit" class="btn-secondary">Update Verification</button>
+        </form>
+    {% endif %}
+
+    {% if request.user.is_authenticated %}
+        <form class="lock-form" action="{% url 'report_dispute' title=title %}" method="post">
+            {% csrf_token %}
+            <label for="dispute_message">Report dispute</label>
+            <textarea id="dispute_message" name="message" placeholder="Describe what might be inaccurate..." required></textarea>
+            <button type="submit" class="btn-secondary">Submit Dispute</button>
+        </form>
+    {% endif %}
+</section>
+
+<article class="content-card markdown-content">
+    {{ content|safe }}
+</article>
 {% endblock %}

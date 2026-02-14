@@ -1,22 +1,40 @@
 {% extends "encyclopedia/layout.html" %}
 
-{% block title %}
-    Encyclopedia
-{% endblock %}
+{% block title %}Edit {{ title }}{% endblock %}
 
 {% block body %}
-    <h1>Edit Page</h1>
-    
-    <form action ="{%  url 'save_edit' %}" Method ="POST">
-        {% csrf_token %}
-       <label>Title:</label>
-    <input type ="text" name ="title" placeholder ="Enter a title " value ="{{ title }}">
-    </br>
-    <label>Markdown Content:</label>
-    </br>
-    <textarea name ="content">{{ content }}</textarea>
-    </br>
-    <input type="submit" value ="Edit" class ="btn btn-primary" >
-</form>
+<section class="page-header compact">
+    <p class="eyebrow">Authoring</p>
+    <h1>Edit {{ title }}</h1>
+    <p class="lead">Each save stores a revision snapshot for rollback.</p>
+</section>
 
+{% if message %}
+    <div class="alert-box">{{ message }}</div>
+{% endif %}
+
+<form action="{% url 'save_edit' title=title %}" method="post" class="content-card editor-shell" data-markdown-editor data-preview-url="{% url 'preview_markdown' %}">
+    {% csrf_token %}
+    <label>Title</label>
+    <input type="text" value="{{ title }}" readonly>
+
+    <label for="edit_summary">Edit Summary</label>
+    <input id="edit_summary" type="text" name="edit_summary" placeholder="What changed? (optional)">
+
+    <div class="editor-grid">
+        <div>
+            <label for="content">Markdown</label>
+            <textarea id="content" name="content" required>{{ content }}</textarea>
+        </div>
+        <div>
+            <label>Preview</label>
+            <div class="preview-pane" data-preview-target></div>
+        </div>
+    </div>
+
+    <div class="actions-row">
+        <button type="submit" class="btn-primary">Save Changes</button>
+        <a href="{% url 'entry' title=title %}" class="btn-secondary">Cancel</a>
+    </div>
+</form>
 {% endblock %}

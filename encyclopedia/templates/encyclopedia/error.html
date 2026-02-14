@@ -1,13 +1,17 @@
 {% extends "encyclopedia/layout.html" %}
 
-{% block title %}
-    Encyclopedia
-{% endblock %}
+{% block title %}Error{% endblock %}
 
 {% block body %}
-    <h1>Error</h1>
+<section class="page-header compact">
+    <p class="eyebrow">Request Failed</p>
+    <h1>Action could not be completed</h1>
+</section>
+
+<section class="content-card">
     <p>{{ message }}</p>
-
-  
-
+    <div class="actions-row">
+        <a href="{% url 'index' %}" class="btn-primary">Back to Library</a>
+    </div>
+</section>
 {% endblock %}

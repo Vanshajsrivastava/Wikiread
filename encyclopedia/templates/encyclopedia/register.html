@@ -1,0 +1,23 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block body %}
+<section class="page-header compact">
+    <p class="eyebrow">Authentication</p>
+    <h1>Create Account</h1>
+</section>
+
+<section class="content-card auth-form-shell">
+    <form action="{% url 'register' %}" method="post" class="auth-form">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        {% for field in form %}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<p class="field-error">{{ field.errors|striptags }}</p>{% endif %}
+        {% endfor %}
+        <button type="submit" class="btn-primary">Register</button>
+    </form>
+</section>
+{% endblock %}

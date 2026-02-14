@@ -1,0 +1,35 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}Revisions • {{ entry.title }}{% endblock %}
+
+{% block body %}
+<section class="page-header compact">
+    <p class="eyebrow">History</p>
+    <h1>Revision History</h1>
+    <p class="lead">{{ entry.title }} has {{ revisions|length }} snapshots available.</p>
+</section>
+
+<section class="content-card">
+    <ul class="simple-list">
+        {% for revision in revisions %}
+            <li class="stacked-item">
+                <div>
+                    <strong>Revision #{{ revision.id }}</strong>
+                    <p>By {% if revision.edited_by %}{{ revision.edited_by.username }}{% else %}Unknown{% endif %} on {{ revision.created_at|date:"Y-m-d H:i" }}</p>
+                    {% if revision.edit_summary %}
+                        <p>Summary: {{ revision.edit_summary }}</p>
+                    {% endif %}
+                </div>
+                {% if can_rollback %}
+                    <form action="{% url 'rollback_revision' title=entry.title revision_id=revision.id %}" method="post" onsubmit="return confirm('Rollback to this revision? Current content will be archived first.');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-secondary">Rollback</button>
+                    </form>
+                {% endif %}
+            </li>
+        {% empty %}
+            <li>No revisions saved yet.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

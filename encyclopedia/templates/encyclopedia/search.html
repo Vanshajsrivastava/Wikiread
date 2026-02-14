@@ -1,14 +1,37 @@
-{% block title %}
-    Encyclopedia
-{% endblock %}
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}Search{% endblock %}
 
 {% block body %}
-    <h1>Search</h1>
+<section class="page-header compact">
+    <p class="eyebrow">Discovery</p>
+    <h1>Search Results</h1>
+    {% if query %}
+        <p class="lead">Showing results for "{{ query }}"</p>
+    {% else %}
+        <p class="lead">Enter a query to search page titles and content.</p>
+    {% endif %}
+</section>
 
-    <ul>
+<section class="entry-grid">
+    {% if recommendation %}
         {% for entry in recommendation %}
-            <li><a href ="{% url 'entry' title=entry %}">{{ entry }}</a></li>
+            <article class="entry-card sleek">
+                <h2><a href="{% url 'entry' title=entry.title %}">{{ entry.title }}</a></h2>
+                <p>Matched in title or body text.</p>
+                <a class="card-link" href="{% url 'entry' title=entry.title %}">Open Page</a>
+            </article>
         {% endfor %}
-    </ul>
-
+    {% elif query %}
+        <article class="entry-card sleek">
+            <h2>No matches found</h2>
+            <p>Try another keyword or create a missing page.</p>
+            {% if request.user.is_authenticated %}
+                <a class="card-link" href="{% url 'new_page' %}">Create Entry</a>
+            {% else %}
+                <a class="card-link" href="{% url 'login' %}">Login to Create</a>
+            {% endif %}
+        </article>
+    {% endif %}
+</section>
 {% endblock %}

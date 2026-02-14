@@ -1,0 +1,100 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+<section class="hero-block">
+    <div>
+        {% if is_admin_dashboard %}
+            <p class="eyebrow">Admin Control</p>
+            <h1>Platform Dashboard</h1>
+            <p class="lead">Moderate content, review logs, and monitor lock and revision activity.</p>
+        {% else %}
+            <p class="eyebrow">Personal Workspace</p>
+            <h1>Your Dashboard</h1>
+            <p class="lead">Track pages you own and your recent actions.</p>
+        {% endif %}
+    </div>
+    <div class="hero-metrics">
+        <div><strong>{{ total_entries }}</strong><span>Total</span></div>
+        <div><strong>{{ locked_entries_count }}</strong><span>Locked</span></div>
+        <div><strong>{{ revision_count }}</strong><span>Revisions</span></div>
+        <div><strong>{{ verified_entries_count }}</strong><span>Verified</span></div>
+    </div>
+</section>
+
+<section class="stat-grid">
+    <article class="stat-card"><h2>{{ your_entries_count }}</h2><p>Your Entries</p></article>
+    <article class="stat-card"><h2>{% if is_admin_dashboard %}Superuser{% else %}Member{% endif %}</h2><p>Access Level</p></article>
+    <article class="stat-card"><h2>{{ pending_disputes_count }}</h2><p>Open Disputes</p></article>
+</section>
+
+<section class="content-card">
+    <h2>Your Recent Entries</h2>
+    <ul class="simple-list">
+        {% for entry in your_recent_entries %}
+            <li><a href="{% url 'entry' title=entry.title %}">{{ entry.title }}</a><span>{{ entry.updated_at|date:"Y-m-d H:i" }}</span></li>
+        {% empty %}
+            <li>No entries created yet.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="content-card">
+    <h2>Your Activity</h2>
+    <ul class="simple-list">
+        {% for log in your_recent_activity %}
+            <li><span>{{ log.get_action_display }} on {{ log.entry_title }}</span><span>{{ log.created_at|date:"Y-m-d H:i" }}</span></li>
+        {% empty %}
+            <li>No activity yet.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+{% if is_admin_dashboard %}
+<section class="content-card">
+    <h2>Pending Disputes</h2>
+    <div class="actions-row">
+        <a href="{% url 'disputes_queue' %}" class="btn-secondary">Open Queue</a>
+    </div>
+    <ul class="simple-list">
+        {% for dispute in pending_disputes %}
+            <li>
+                <a href="{% url 'entry' title=dispute.entry.title %}">{{ dispute.entry.title }}</a>
+                <span>By {% if dispute.reported_by %}{{ dispute.reported_by.username }}{% else %}Unknown{% endif %}</span>
+            </li>
+        {% empty %}
+            <li>No pending disputes.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="content-card">
+    <h2>Recent Platform Activity</h2>
+    <ul class="simple-list">
+        {% for log in recent_audit_logs %}
+            <li>
+                <span>{{ log.get_action_display }} • {{ log.entry_title }} • {% if log.actor %}{{ log.actor.username }}{% else %}System{% endif %}</span>
+                <span>{{ log.created_at|date:"Y-m-d H:i" }}</span>
+            </li>
+        {% empty %}
+            <li>No audit activity yet.</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="content-card">
+    <h2>Recent Entries Across Platform</h2>
+    <ul class="simple-list">
+        {% for entry in all_recent_entries %}
+            <li>
+                <a href="{% url 'entry' title=entry.title %}">{{ entry.title }}</a>
+                <span>{% if entry.created_by %}{{ entry.created_by.username }}{% else %}Unknown{% endif %}</span>
+            </li>
+        {% empty %}
+            <li>No entries available.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

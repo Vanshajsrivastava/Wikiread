@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 160" role="img" aria-labelledby="title desc">
+  <title id="title">WikiRead logo</title>
+  <desc id="desc">Open book logo with WikiRead text</desc>
+  <defs>
+    <style>
+      .ink { fill: #0f766e; }
+      .paper { fill: #ffffff; }
+      .line { fill: none; stroke: #0f766e; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+      .word { fill: #0f766e; font: 700 34px 'Space Grotesk', 'Segoe UI', sans-serif; letter-spacing: 0.5px; }
+    </style>
+  </defs>
+
+  <rect x="8" y="8" width="404" height="144" rx="24" fill="#eaf4f0"/>
+
+  <path class="ink" d="M44 112V46c44-20 89-20 133 0v66c-44-20-89-20-133 0z"/>
+  <path class="ink" d="M243 112V46c44-20 89-20 133 0v66c-44-20-89-20-133 0z"/>
+
+  <path class="paper" d="M56 105V54c36-16 72-16 109 0v51c-37-16-73-16-109 0z"/>
+  <path class="paper" d="M255 105V54c36-16 72-16 109 0v51c-37-16-73-16-109 0z"/>
+
+  <path class="line" d="M210 42v73"/>
+  <path class="line" d="M68 72h84"/>
+  <path class="line" d="M267 72h84"/>
+
+  <text x="210" y="94" text-anchor="middle" class="word">WikiRead</text>
+</svg>
