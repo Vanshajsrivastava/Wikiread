@@ -140,6 +140,12 @@ else:
     STATICFILES_STORAGE = os.environ.get(
         "STATICFILES_STORAGE", "whitenoise.storage.CompressedStaticFilesStorage"
     )
+    # Serve static assets directly from app/static directories on serverless
+    # deployments where collectstatic output may not be present.
+    WHITENOISE_USE_FINDERS = True
+    WHITENOISE_AUTOREFRESH = True
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
