@@ -1,16 +1,19 @@
 import random
+from urllib.parse import quote_plus, urlparse
 
 import markdown
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.http import JsonResponse
 
 from . import util
-from .models import AuditLog, Dispute, Entry, EntryRevision
+from .models import AuditLog, Dispute, Entry, EntryResource, EntryRevision
 
 
 def _can_delete_entry(request, entry_obj):
@@ -36,6 +39,115 @@ def _log_action(action, entry, actor, details=""):
         actor=actor if actor and actor.is_authenticated else None,
         details=details,
     )
+
+
+def _build_research_links(topic):
+    safe_topic = (topic or "general research").strip()
+    encoded = quote_plus(safe_topic)
+    return [
+        {
+            "label": "Wikipedia Context",
+            "url": f"https://en.wikipedia.org/wiki/Special:Search?search={encoded}",
+            "description": "Get baseline overview pages to frame your entry.",
+        },
+        {
+            "label": "Google Scholar",
+            "url": f"https://scholar.google.com/scholar?q={encoded}",
+            "description": "Find academic papers and citations.",
+        },
+        {
+            "label": "Crossref Works",
+            "url": f"https://search.crossref.org/?q={encoded}",
+            "description": "Find DOI-backed journal and conference sources.",
+        },
+        {
+            "label": "Open Library",
+            "url": f"https://openlibrary.org/search?q={encoded}",
+            "description": "Collect book references and publication details.",
+        },
+        {
+            "label": "Web Search",
+            "url": f"https://www.google.com/search?q={encoded}",
+            "description": "Discover broader source material quickly.",
+        },
+    ]
+
+
+def _resource_lines_for_entry(entry_obj, resource_type):
+    return "\n".join(
+        [
+            f"{item.label} | {item.url}"
+            for item in entry_obj.resources.filter(resource_type=resource_type).order_by("created_at")
+        ]
+    )
+
+
+def _parse_resource_lines(raw_text, default_label):
+    validator = URLValidator()
+    parsed = []
+    for line in (raw_text or "").splitlines():
+        item = line.strip()
+        if not item:
+            continue
+
+        label = default_label
+        url = item
+        if "|" in item:
+            left, right = item.split("|", 1)
+            label = left.strip() or default_label
+            url = right.strip()
+
+        try:
+            validator(url)
+        except ValidationError:
+            continue
+
+        if label == default_label:
+            hostname = urlparse(url).netloc.replace("www.", "")
+            if hostname:
+                label = hostname
+
+        parsed.append((label[:120], url))
+    return parsed
+
+
+def _replace_resources(entry_obj, actor, journals_raw, sources_raw, images_raw):
+    entry_obj.resources.filter(resource_type__in=["journal", "source", "image"]).delete()
+
+    bulk_items = []
+    for label, url in _parse_resource_lines(journals_raw, "Journal"):
+        bulk_items.append(
+            EntryResource(
+                entry=entry_obj,
+                resource_type="journal",
+                label=label,
+                url=url,
+                added_by=actor,
+            )
+        )
+    for label, url in _parse_resource_lines(sources_raw, "Source"):
+        bulk_items.append(
+            EntryResource(
+                entry=entry_obj,
+                resource_type="source",
+                label=label,
+                url=url,
+                added_by=actor,
+            )
+        )
+    for label, url in _parse_resource_lines(images_raw, "Image"):
+        bulk_items.append(
+            EntryResource(
+                entry=entry_obj,
+                resource_type="image",
+                label=label,
+                url=url,
+                added_by=actor,
+            )
+        )
+
+    if bulk_items:
+        EntryResource.objects.bulk_create(bulk_items)
 
 
 @login_required
@@ -167,12 +279,16 @@ def entry(request, title):
         )
 
     html_content = convert_md_to_html(entry_obj.title)
+    journal_resources = entry_obj.resources.filter(resource_type="journal")
+    source_resources = entry_obj.resources.filter(resource_type="source")
+    image_resources = entry_obj.resources.filter(resource_type="image")
     return render(
         request,
         "encyclopedia/entry.html",
         {
             "title": entry_obj.title,
             "content": html_content,
+            "lead_image_url": entry_obj.lead_image_url,
             "can_delete": _can_delete_entry(request, entry_obj),
             "can_moderate": _can_moderate(request),
             "can_rollback": _can_rollback(request, entry_obj),
@@ -185,6 +301,10 @@ def entry(request, title):
             "verification_note": entry_obj.verification_note,
             "verified_by": entry_obj.verified_by.username if entry_obj.verified_by else "Unknown",
             "open_disputes_count": entry_obj.disputes.filter(status="open").count(),
+            "journal_resources": journal_resources,
+            "source_resources": source_resources,
+            "image_resources": image_resources,
+            "research_links": _build_research_links(entry_obj.title),
         },
     )
 
@@ -219,10 +339,20 @@ def search(request):
 @login_required
 def new_page(request):
     if request.method == "GET":
-        return render(request, "encyclopedia/new.html")
+        return render(
+            request,
+            "encyclopedia/new.html",
+            {
+                "research_links": _build_research_links("Knowledge topic"),
+            },
+        )
 
     title = request.POST.get("title", "").strip()
     content = request.POST.get("content", "").strip()
+    lead_image_url = request.POST.get("lead_image_url", "").strip()
+    journal_links = request.POST.get("journal_links", "").strip()
+    source_links = request.POST.get("source_links", "").strip()
+    image_links = request.POST.get("image_links", "").strip()
 
     if not title or not content:
         return render(
@@ -232,6 +362,11 @@ def new_page(request):
                 "message": "Both title and content are required.",
                 "title": title,
                 "content": content,
+                "lead_image_url": lead_image_url,
+                "journal_links": journal_links,
+                "source_links": source_links,
+                "image_links": image_links,
+                "research_links": _build_research_links(title or "Knowledge topic"),
             },
             status=400,
         )
@@ -247,6 +382,10 @@ def new_page(request):
         )
 
     saved = util.save_entry(title, content, creator=request.user)
+    if lead_image_url:
+        saved.lead_image_url = lead_image_url
+        saved.save(update_fields=["lead_image_url", "updated_at"])
+    _replace_resources(saved, request.user, journal_links, source_links, image_links)
     _log_action("create", saved, request.user, "Created new entry")
     return redirect(reverse("entry", kwargs={"title": saved.title}))
 
@@ -278,6 +417,11 @@ def edit(request, title):
         {
             "title": entry_obj.title,
             "content": entry_obj.content,
+            "lead_image_url": entry_obj.lead_image_url,
+            "journal_links": _resource_lines_for_entry(entry_obj, "journal"),
+            "source_links": _resource_lines_for_entry(entry_obj, "source"),
+            "image_links": _resource_lines_for_entry(entry_obj, "image"),
+            "research_links": _build_research_links(entry_obj.title),
         },
     )
 
@@ -308,6 +452,10 @@ def save_edit(request, title):
 
     content = request.POST.get("content", "").strip()
     summary = request.POST.get("edit_summary", "").strip()
+    lead_image_url = request.POST.get("lead_image_url", "").strip()
+    journal_links = request.POST.get("journal_links", "").strip()
+    source_links = request.POST.get("source_links", "").strip()
+    image_links = request.POST.get("image_links", "").strip()
     if not content:
         return render(
             request,
@@ -316,6 +464,11 @@ def save_edit(request, title):
                 "title": entry_obj.title,
                 "content": entry_obj.content,
                 "message": "Content cannot be empty.",
+                "lead_image_url": lead_image_url,
+                "journal_links": journal_links,
+                "source_links": source_links,
+                "image_links": image_links,
+                "research_links": _build_research_links(entry_obj.title),
             },
             status=400,
         )
@@ -329,6 +482,10 @@ def save_edit(request, title):
         )
 
     util.save_entry(entry_obj.title, content)
+    if entry_obj.lead_image_url != lead_image_url:
+        entry_obj.lead_image_url = lead_image_url
+        entry_obj.save(update_fields=["lead_image_url", "updated_at"])
+    _replace_resources(entry_obj, request.user, journal_links, source_links, image_links)
     _log_action("edit", entry_obj, request.user, summary or "Updated entry content")
     return redirect(reverse("entry", kwargs={"title": entry_obj.title}))
 

@@ -6,7 +6,7 @@
 <section class="page-header compact">
     <p class="eyebrow">Authoring</p>
     <h1>Edit {{ title }}</h1>
-    <p class="lead">Each save stores a revision snapshot for rollback.</p>
+    <p class="lead">Refine the page, keep references fresh, and preserve revision history on every save.</p>
 </section>
 
 {% if message %}
@@ -17,6 +17,9 @@
     {% csrf_token %}
     <label>Title</label>
     <input type="text" value="{{ title }}" readonly>
+
+    <label for="lead_image_url">Cover Image URL (optional)</label>
+    <input id="lead_image_url" type="text" name="lead_image_url" placeholder="https://..." value="{{ lead_image_url|default:'' }}">
 
     <label for="edit_summary">Edit Summary</label>
     <input id="edit_summary" type="text" name="edit_summary" placeholder="What changed? (optional)">
@@ -31,6 +34,44 @@
             <div class="preview-pane" data-preview-target></div>
         </div>
     </div>
+
+    <section class="support-grid">
+        <article class="content-card soft">
+            <h2>Writing Assistant</h2>
+            <ul class="assistant-list">
+                <li>Keep definitions concise before adding advanced details.</li>
+                <li>Replace subjective words with measurable facts.</li>
+                <li>Use source-backed claims for every critical statement.</li>
+                <li>Leave an edit summary so collaborators understand the update.</li>
+            </ul>
+        </article>
+        <article class="content-card soft">
+            <h2>Research Links (Internet)</h2>
+            <ul class="simple-list compact">
+                {% for link in research_links %}
+                    <li class="stacked-item">
+                        <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.label }}</a>
+                        <p>{{ link.description }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+    </section>
+
+    <section class="resource-grid">
+        <article>
+            <label for="journal_links">Journal Links</label>
+            <textarea id="journal_links" name="journal_links" class="compact-input" placeholder="Nature article | https://...\nhttps://doi.org/...">{{ journal_links|default:'' }}</textarea>
+        </article>
+        <article>
+            <label for="source_links">Source Links</label>
+            <textarea id="source_links" name="source_links" class="compact-input" placeholder="Reference title | https://...\nhttps://example.com/source">{{ source_links|default:'' }}</textarea>
+        </article>
+        <article>
+            <label for="image_links">Image Links</label>
+            <textarea id="image_links" name="image_links" class="compact-input" placeholder="Cover image | https://...\nDiagram | https://...">{{ image_links|default:'' }}</textarea>
+        </article>
+    </section>
 
     <div class="actions-row">
         <button type="submit" class="btn-primary">Save Changes</button>

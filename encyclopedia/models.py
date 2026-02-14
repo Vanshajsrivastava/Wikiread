@@ -12,6 +12,7 @@ class Entry(models.Model):
 
     title = models.CharField(max_length=200, unique=True)
     content = models.TextField()
+    lead_image_url = models.URLField(max_length=500, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -143,3 +144,30 @@ class Dispute(models.Model):
 
     def __str__(self):
         return f"Dispute on {self.entry.title} ({self.status})"
+
+
+class EntryResource(models.Model):
+    RESOURCE_CHOICES = [
+        ("journal", "Journal"),
+        ("source", "Source"),
+        ("image", "Image"),
+    ]
+
+    entry = models.ForeignKey(Entry, on_delete=models.CASCADE, related_name="resources")
+    resource_type = models.CharField(max_length=20, choices=RESOURCE_CHOICES, default="source")
+    label = models.CharField(max_length=120)
+    url = models.URLField(max_length=500)
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="entry_resources",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.entry.title} - {self.resource_type} - {self.label}"

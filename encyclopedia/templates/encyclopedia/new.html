@@ -6,7 +6,7 @@
 <section class="page-header compact">
     <p class="eyebrow">Authoring</p>
     <h1>Create New Entry</h1>
-    <p class="lead">Draft markdown on the left and validate rendering live on the right.</p>
+    <p class="lead">Draft in markdown, attach trusted references, and publish with a consistent research flow.</p>
 </section>
 
 {% if message %}
@@ -16,7 +16,10 @@
 <form action="{% url 'new_page' %}" method="post" class="content-card editor-shell" data-markdown-editor data-preview-url="{% url 'preview_markdown' %}">
     {% csrf_token %}
     <label for="title">Title</label>
-    <input id="title" type="text" name="title" placeholder="Page title" value="{{ title|default:'' }}" required>
+    <input id="title" type="text" name="title" placeholder="Page title" value="{{ title|default:'' }}" required data-topic-input>
+
+    <label for="lead_image_url">Cover Image URL (optional)</label>
+    <input id="lead_image_url" type="text" name="lead_image_url" placeholder="https://..." value="{{ lead_image_url|default:'' }}">
 
     <div class="editor-grid">
         <div>
@@ -28,6 +31,45 @@
             <div class="preview-pane" data-preview-target></div>
         </div>
     </div>
+
+    <section class="support-grid">
+        <article class="content-card soft">
+            <h2>Writing Assistant</h2>
+            <ul class="assistant-list">
+                <li>Start with a one-line summary before detailed sections.</li>
+                <li>Use headings: Overview, Key Facts, Sources, and Further Reading.</li>
+                <li>Prefer neutral language and avoid unsupported claims.</li>
+                <li>End with citations so readers can verify quickly.</li>
+            </ul>
+        </article>
+        <article class="content-card soft">
+            <h2>Research Links (Internet)</h2>
+            <p class="lead compact">These links auto-update with your title topic.</p>
+            <ul class="simple-list compact" data-research-links>
+                {% for link in research_links %}
+                    <li class="stacked-item">
+                        <a href="{{ link.url }}" target="_blank" rel="noopener" data-research-link data-template="{{ link.url }}">{{ link.label }}</a>
+                        <p>{{ link.description }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+    </section>
+
+    <section class="resource-grid">
+        <article>
+            <label for="journal_links">Journal Links</label>
+            <textarea id="journal_links" name="journal_links" class="compact-input" placeholder="Nature article | https://...\nhttps://doi.org/...">{{ journal_links|default:'' }}</textarea>
+        </article>
+        <article>
+            <label for="source_links">Source Links</label>
+            <textarea id="source_links" name="source_links" class="compact-input" placeholder="Reference title | https://...\nhttps://example.com/source">{{ source_links|default:'' }}</textarea>
+        </article>
+        <article>
+            <label for="image_links">Image Links</label>
+            <textarea id="image_links" name="image_links" class="compact-input" placeholder="Cover image | https://...\nDiagram | https://...">{{ image_links|default:'' }}</textarea>
+        </article>
+    </section>
 
     <div class="actions-row">
         <button type="submit" class="btn-primary">Publish Entry</button>

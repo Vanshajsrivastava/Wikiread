@@ -73,7 +73,59 @@
     {% endif %}
 </section>
 
+{% if lead_image_url %}
+    <section class="content-card cover-card">
+        <img src="{{ lead_image_url }}" alt="{{ title }} cover image" class="entry-cover-image">
+    </section>
+{% endif %}
+
 <article class="content-card markdown-content">
     {{ content|safe }}
 </article>
+
+<section class="resource-grid entry-resources">
+    <article class="content-card soft">
+        <h2>Journal Links</h2>
+        <ul class="simple-list compact">
+            {% for resource in journal_resources %}
+                <li><a href="{{ resource.url }}" target="_blank" rel="noopener">{{ resource.label }}</a></li>
+            {% empty %}
+                <li>No journal links added yet.</li>
+            {% endfor %}
+        </ul>
+    </article>
+    <article class="content-card soft">
+        <h2>Source Links</h2>
+        <ul class="simple-list compact">
+            {% for resource in source_resources %}
+                <li><a href="{{ resource.url }}" target="_blank" rel="noopener">{{ resource.label }}</a></li>
+            {% empty %}
+                <li>No source links added yet.</li>
+            {% endfor %}
+        </ul>
+    </article>
+    <article class="content-card soft">
+        <h2>Image Links</h2>
+        <ul class="simple-list compact">
+            {% for resource in image_resources %}
+                <li><a href="{{ resource.url }}" target="_blank" rel="noopener">{{ resource.label }}</a></li>
+            {% empty %}
+                <li>No image links added yet.</li>
+            {% endfor %}
+        </ul>
+    </article>
+</section>
+
+<section class="content-card soft">
+    <h2>Research Helper</h2>
+    <p class="lead compact">Use these internet links to validate and expand this topic.</p>
+    <ul class="simple-list compact">
+        {% for link in research_links %}
+            <li class="stacked-item">
+                <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.label }}</a>
+                <p>{{ link.description }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+</section>
 {% endblock %}
