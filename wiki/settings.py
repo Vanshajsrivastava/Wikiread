@@ -132,7 +132,14 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+if DEBUG:
+    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+else:
+    # Vercel serverless deployments can fail hard on missing manifest entries.
+    # CompressedStaticFilesStorage avoids runtime 500s from strict manifest lookups.
+    STATICFILES_STORAGE = os.environ.get(
+        "STATICFILES_STORAGE", "whitenoise.storage.CompressedStaticFilesStorage"
+    )
 
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
