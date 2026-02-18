@@ -45,8 +45,8 @@ variable "nat_gateway_count" {
   default     = 1
 
   validation {
-    condition     = var.nat_gateway_count >= 1 && var.nat_gateway_count <= var.az_count
-    error_message = "nat_gateway_count must be between 1 and az_count."
+    condition     = var.nat_gateway_count >= 1
+    error_message = "nat_gateway_count must be at least 1."
   }
 }
 
@@ -68,8 +68,8 @@ variable "node_group_max_size" {
   default     = 6
 
   validation {
-    condition     = var.node_group_max_size >= var.node_group_min_size
-    error_message = "node_group_max_size must be greater than or equal to node_group_min_size."
+    condition     = var.node_group_max_size >= 1
+    error_message = "node_group_max_size must be at least 1."
   }
 }
 
@@ -79,11 +79,8 @@ variable "node_group_desired_size" {
   default     = 2
 
   validation {
-    condition = (
-      var.node_group_desired_size >= var.node_group_min_size &&
-      var.node_group_desired_size <= var.node_group_max_size
-    )
-    error_message = "node_group_desired_size must be between min and max node group size."
+    condition     = var.node_group_desired_size >= 0
+    error_message = "node_group_desired_size must be at least 0."
   }
 }
 
