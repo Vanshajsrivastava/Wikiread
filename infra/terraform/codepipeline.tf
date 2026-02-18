@@ -57,7 +57,8 @@ resource "aws_codepipeline" "app" {
       version         = "1"
 
       configuration = {
-        ProjectName = aws_codebuild_project.app_deploy.name
+        ProjectName   = aws_codebuild_project.app_deploy.name
+        PrimarySource = "source_output"
       }
     }
   }

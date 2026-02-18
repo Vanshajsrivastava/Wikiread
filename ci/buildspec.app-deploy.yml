@@ -18,7 +18,7 @@ phases:
       - aws eks update-kubeconfig --region "$AWS_DEFAULT_REGION" --name "$EKS_CLUSTER_NAME"
   build:
     commands:
-      - IMAGE_URI=$(cat out/image-uri.txt)
+      - IMAGE_URI=$(cat "$CODEBUILD_SRC_DIR_build_output/out/image-uri.txt")
       - echo "Using image: $IMAGE_URI"
       - helm repo add argo https://argoproj.github.io/argo-helm
       - helm repo update
