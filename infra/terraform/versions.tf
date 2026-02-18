@@ -8,12 +8,11 @@ terraform {
     }
   }
 
-  # Configure S3 backend after first bootstrap.
-  # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
-  #   key            = "wikiread/prod/terraform.tfstate"
-  #   region         = "eu-west-2"
-  #   dynamodb_table = "your-terraform-lock-table"
-  #   encrypt        = true
-  # }
+  backend "s3" {
+    bucket         = "wikiread-tfstate-912390896612"
+    key            = "wikiread/prod/terraform.tfstate"
+    region         = "eu-west-2"
+    dynamodb_table = "wikiread-tf-lock"
+    encrypt        = true
+  }
 }
