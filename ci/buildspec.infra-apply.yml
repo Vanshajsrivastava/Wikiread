@@ -1,0 +1,17 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: eu-west-2
+
+phases:
+  install:
+    commands:
+      - set -eu
+      - curl -sSL -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip
+      - unzip -o /tmp/terraform.zip -d /usr/local/bin
+  build:
+    commands:
+      - cd infra/terraform
+      - terraform init -input=false
+      - terraform apply -input=false -auto-approve

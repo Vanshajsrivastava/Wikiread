@@ -7,7 +7,7 @@ env:
 phases:
   pre_build:
     commands:
-      - set -euo pipefail
+      - set -eu
       - COMMIT_SHA=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
       - IMAGE_TAG=${COMMIT_SHA:-latest}
       - REPOSITORY_URI=$ECR_REPOSITORY_URL

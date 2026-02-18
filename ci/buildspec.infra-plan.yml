@@ -1,0 +1,29 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: eu-west-2
+
+phases:
+  install:
+    commands:
+      - set -eu
+      - curl -sSL -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip
+      - unzip -o /tmp/terraform.zip -d /usr/local/bin
+  build:
+    commands:
+      - cd infra/terraform
+      - terraform init -input=false
+      - terraform fmt -check
+      - terraform validate
+      - terraform plan -input=false -no-color -out=tfplan | tee tfplan.txt
+      - PLAN_KEY="plans/${CODEBUILD_BUILD_ID}.txt"
+      - aws s3 cp tfplan.txt "s3://${TF_PLAN_BUCKET}/${PLAN_KEY}"
+      - |
+        aws sns publish \
+          --topic-arn "$APPROVAL_SNS_TOPIC_ARN" \
+          --subject "Terraform plan for ${CODEBUILD_BUILD_ID}" \
+          --message "Terraform plan generated for ${CODEBUILD_BUILD_ID}. Review: s3://${TF_PLAN_BUCKET}/${PLAN_KEY}"
+artifacts:
+  files:
+    - infra/terraform/tfplan.txt
