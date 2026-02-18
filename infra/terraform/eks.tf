@@ -12,7 +12,9 @@ module "eks" {
   vpc_id     = aws_vpc.main.id
   subnet_ids = aws_subnet.private_app[*].id
 
-  enable_cluster_creator_admin_permissions = true
+  # Avoid caller-identity drift between local runs and CodeBuild runs.
+  # We manage access explicitly via access_entries below.
+  enable_cluster_creator_admin_permissions = false
 
   eks_managed_node_groups = {
     default = {
