@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wikiread-config
+  namespace: wikiread
+data:
+  DEBUG: "0"
+  ALLOWED_HOSTS: "*"
+  PORT: "8000"

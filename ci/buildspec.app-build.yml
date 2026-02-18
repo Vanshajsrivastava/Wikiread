@@ -1,0 +1,24 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: eu-west-2
+
+phases:
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - COMMIT_SHA=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_SHA:-latest}
+      - REPOSITORY_URI=$ECR_REPOSITORY_URL
+      - REGISTRY_URI=$(echo "$REPOSITORY_URI" | cut -d/ -f1)
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY_URI"
+  build:
+    commands:
+      - docker build -t "$REPOSITORY_URI:$IMAGE_TAG" .
+      - docker push "$REPOSITORY_URI:$IMAGE_TAG"
+      - mkdir -p out
+      - printf '%s' "$REPOSITORY_URI:$IMAGE_TAG" > out/image-uri.txt
+artifacts:
+  files:
+    - out/*

@@ -1,0 +1,54 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: eu-west-2
+
+phases:
+  install:
+    commands:
+      - set -euo pipefail
+      - curl -sSL -o /tmp/kubectl https://dl.k8s.io/release/v1.30.2/bin/linux/amd64/kubectl
+      - install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+      - curl -sSL https://get.helm.sh/helm-v3.16.4-linux-amd64.tar.gz -o /tmp/helm.tar.gz
+      - tar -xzf /tmp/helm.tar.gz -C /tmp
+      - install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm
+  pre_build:
+    commands:
+      - aws eks update-kubeconfig --region "$AWS_DEFAULT_REGION" --name "$EKS_CLUSTER_NAME"
+  build:
+    commands:
+      - IMAGE_URI=$(cat out/image-uri.txt)
+      - echo "Using image: $IMAGE_URI"
+      - helm repo add argo https://argoproj.github.io/argo-helm
+      - helm repo update
+      - helm upgrade --install argocd argo/argo-cd --namespace argocd --create-namespace --wait
+      - helm upgrade --install argo-rollouts argo/argo-rollouts --namespace argo-rollouts --create-namespace --wait
+      - kubectl get namespace wikiread >/dev/null 2>&1 || kubectl create namespace wikiread
+      - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$APP_SECRET_ARN" --query SecretString --output text)
+      - |
+        SECRET_JSON="$SECRET_JSON" python - <<'PY' > /tmp/wikiread-secret.yaml
+        import base64
+        import json
+        import os
+
+        payload = json.loads(os.environ["SECRET_JSON"])
+
+        def b64(value):
+            return base64.b64encode(value.encode("utf-8")).decode("utf-8")
+
+        print("apiVersion: v1")
+        print("kind: Secret")
+        print("metadata:")
+        print("  name: wikiread-secrets")
+        print("  namespace: wikiread")
+        print("type: Opaque")
+        print("data:")
+        print(f"  SECRET_KEY: {b64(payload['SECRET_KEY'])}")
+        print(f"  DATABASE_URL: {b64(payload['DATABASE_URL'])}")
+        PY
+      - kubectl apply -f /tmp/wikiread-secret.yaml
+      - sed -e "s|REPO_URL|$GIT_REPO_URL|g" -e "s|TARGET_REVISION|$GIT_TARGET_REVISION|g" -e "s|IMAGE_URI|$IMAGE_URI|g" k8s/argocd/application.yaml.tpl > /tmp/wikiread-application.yaml
+      - kubectl apply -f /tmp/wikiread-application.yaml
+      - kubectl -n argocd annotate application wikiread argocd.argoproj.io/refresh=hard --overwrite
+      - kubectl -n wikiread get all

@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: wikiread
+  namespace: wikiread
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: wikiread
+  template:
+    metadata:
+      labels:
+        app: wikiread
+    spec:
+      containers:
+        - name: wikiread
+          image: wikiread:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: wikiread-config
+            - secretRef:
+                name: wikiread-secrets
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  strategy:
+    blueGreen:
+      activeService: wikiread-active
+      previewService: wikiread-preview
+      autoPromotionEnabled: true
+      previewReplicaCount: 2
+      scaleDownDelaySeconds: 30

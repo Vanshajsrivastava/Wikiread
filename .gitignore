@@ -20,3 +20,11 @@ media/
 .DS_Store
 .vscode/
 .idea/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
