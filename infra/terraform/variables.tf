@@ -134,8 +134,31 @@ variable "db_engine_version" {
   default     = null
 }
 
+variable "rds_backup_retention_period" {
+  type        = number
+  description = "RDS backup retention period in days. Use 0 for free-tier-restricted accounts."
+  default     = 7
+
+  validation {
+    condition     = var.rds_backup_retention_period >= 0 && var.rds_backup_retention_period <= 35
+    error_message = "rds_backup_retention_period must be between 0 and 35."
+  }
+}
+
 variable "allowed_cidrs_for_eks_api" {
   type        = list(string)
   description = "CIDRs allowed to access EKS API endpoint"
   default     = ["0.0.0.0/0"]
+}
+
+variable "enable_metrics_server_addon" {
+  type        = bool
+  description = "Enable EKS managed metrics-server addon for HPA metrics."
+  default     = true
+}
+
+variable "enable_cloudwatch_observability_addon" {
+  type        = bool
+  description = "Enable EKS CloudWatch observability addon (Container Insights)."
+  default     = true
 }

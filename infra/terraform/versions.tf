@@ -9,7 +9,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "wikiread-tfstate-912390896612"
+    bucket         = "wikiread-tfstate-016817716036"
     key            = "wikiread/prod/terraform.tfstate"
     region         = "eu-west-2"
     dynamodb_table = "wikiread-tf-lock"
