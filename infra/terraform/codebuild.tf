@@ -138,6 +138,56 @@ resource "aws_codebuild_project" "infra_plan" {
       name  = "TF_VAR_db_password"
       value = var.db_password
     }
+
+    environment_variable {
+      name  = "TF_VAR_az_count"
+      value = tostring(var.az_count)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_nat_gateway_count"
+      value = tostring(var.nat_gateway_count)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_instance_types"
+      value = jsonencode(var.node_instance_types)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_group_min_size"
+      value = tostring(var.node_group_min_size)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_group_desired_size"
+      value = tostring(var.node_group_desired_size)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_group_max_size"
+      value = tostring(var.node_group_max_size)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_db_engine_version"
+      value = var.db_engine_version == null ? "" : var.db_engine_version
+    }
+
+    environment_variable {
+      name  = "TF_VAR_rds_backup_retention_period"
+      value = tostring(var.rds_backup_retention_period)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_enable_metrics_server_addon"
+      value = tostring(var.enable_metrics_server_addon)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_enable_cloudwatch_observability_addon"
+      value = tostring(var.enable_cloudwatch_observability_addon)
+    }
   }
 
   source {
@@ -195,6 +245,56 @@ resource "aws_codebuild_project" "infra_apply" {
     environment_variable {
       name  = "TF_VAR_db_password"
       value = var.db_password
+    }
+
+    environment_variable {
+      name  = "TF_VAR_az_count"
+      value = tostring(var.az_count)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_nat_gateway_count"
+      value = tostring(var.nat_gateway_count)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_instance_types"
+      value = jsonencode(var.node_instance_types)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_group_min_size"
+      value = tostring(var.node_group_min_size)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_group_desired_size"
+      value = tostring(var.node_group_desired_size)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_node_group_max_size"
+      value = tostring(var.node_group_max_size)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_db_engine_version"
+      value = var.db_engine_version == null ? "" : var.db_engine_version
+    }
+
+    environment_variable {
+      name  = "TF_VAR_rds_backup_retention_period"
+      value = tostring(var.rds_backup_retention_period)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_enable_metrics_server_addon"
+      value = tostring(var.enable_metrics_server_addon)
+    }
+
+    environment_variable {
+      name  = "TF_VAR_enable_cloudwatch_observability_addon"
+      value = tostring(var.enable_cloudwatch_observability_addon)
     }
   }
 
