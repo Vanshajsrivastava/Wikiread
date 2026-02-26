@@ -16,4 +16,6 @@ node_instance_types     = ["t3.medium"]
 node_group_min_size     = 2
 node_group_desired_size = 3
 node_group_max_size     = 8
+enable_metrics_server_addon          = true
+enable_cloudwatch_observability_addon = true
 allowed_cidrs_for_eks_api = ["0.0.0.0/0"]

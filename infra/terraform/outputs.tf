@@ -7,11 +7,11 @@ output "ecr_repository_url" {
 }
 
 output "db_endpoint" {
-  value = aws_db_instance.postgres.address
+  value = module.rds.db_endpoint
 }
 
 output "secrets_manager_secret_arn" {
-  value = aws_secretsmanager_secret.app.arn
+  value = module.rds.secrets_manager_secret_arn
 }
 
 output "app_pipeline_name" {

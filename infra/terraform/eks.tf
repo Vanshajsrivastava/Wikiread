@@ -9,8 +9,8 @@ module "eks" {
   cluster_endpoint_public_access_cidrs = var.allowed_cidrs_for_eks_api
   cluster_endpoint_private_access      = true
 
-  vpc_id     = aws_vpc.main.id
-  subnet_ids = aws_subnet.private_app[*].id
+  vpc_id     = module.network.vpc_id
+  subnet_ids = module.network.private_app_subnet_ids
 
   # Avoid caller-identity drift between local runs and CodeBuild runs.
   # We manage access explicitly via access_entries below.
@@ -22,7 +22,7 @@ module "eks" {
       max_size       = var.node_group_max_size
       desired_size   = var.node_group_desired_size
       instance_types = var.node_instance_types
-      subnet_ids     = aws_subnet.private_app[*].id
+      subnet_ids     = module.network.private_app_subnet_ids
       capacity_type  = "ON_DEMAND"
     }
   }

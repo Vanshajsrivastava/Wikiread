@@ -53,7 +53,7 @@ resource "aws_codebuild_project" "app_deploy" {
 
     environment_variable {
       name  = "APP_SECRET_ARN"
-      value = aws_secretsmanager_secret.app.arn
+      value = module.rds.secrets_manager_secret_arn
     }
 
     environment_variable {
