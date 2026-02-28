@@ -1,8 +1,142 @@
 # Wikiread
 
-A Django-based wiki app with markdown entries stored in a relational database.
+Wikiread is a Django application deployed on AWS EKS with GitOps delivery (Argo CD + Argo Rollouts), Terraform-based infrastructure provisioning, and CI/CD using CodePipeline + CodeBuild.
 
-## Local run
+## What this project provisions
+
+Terraform in `infra/terraform` creates:
+
+- VPC with public, private-app, and private-db subnets
+- Internet Gateway + NAT Gateway routing
+- EKS cluster and managed node group
+- ECR repository for app images
+- RDS PostgreSQL (private, not publicly accessible)
+- Secrets Manager app secret (`<name>/app-secrets`)
+- S3 buckets for pipeline artifacts and Terraform plans
+- SNS topic + email subscription for plan review notifications
+- CodeBuild projects (app build/deploy, infra plan/apply)
+- CodePipeline pipelines (app and infra)
+- EKS addons (optional): `metrics-server`, `amazon-cloudwatch-observability`
+
+## Architecture summary
+
+- App traffic enters via `wikiread-active` Kubernetes Service (`LoadBalancer`, NLB, internet-facing).
+- App pods run in private app subnets on EKS worker nodes.
+- Database runs in private DB subnets and accepts traffic only from EKS node security group.
+- Outbound internet from private subnets goes via NAT.
+- Argo CD continuously syncs desired Kubernetes state from this Git repo.
+- Argo Rollouts handles blue/green delivery using active and preview services.
+
+## Repository structure
+
+- `infra/terraform`: Infrastructure as Code
+- `infra/terraform/modules/network`: VPC/subnet/NAT module
+- `infra/terraform/modules/rds`: RDS + secret module
+- `infra/terraform/modules/observability`: EKS addons/IRSA
+- `ci/buildspec.*.yml`: CodeBuild workflows
+- `k8s/base`: Kubernetes app manifests (Kustomize base)
+- `k8s/argocd/application.yaml.tpl`: Argo CD Application template
+
+## Kubernetes manifest roles
+
+- `k8s/base/namespace.yaml`: creates `wikiread` namespace
+- `k8s/base/configmap.yaml`: non-sensitive app config (`DEBUG`, `ALLOWED_HOSTS`, `PORT`)
+- `k8s/base/rollout.yaml`: Argo Rollouts `Rollout` for blue/green deployment
+- `k8s/base/service-active.yaml`: public service (active version)
+- `k8s/base/service-preview.yaml`: internal preview service for rollout promotion
+- `k8s/base/hpa.yaml`: HorizontalPodAutoscaler targeting the Rollout
+- `k8s/base/kustomization.yaml`: Kustomize entrypoint
+- `k8s/base/secret.example.yaml`: local example only (real secret is generated from Secrets Manager by deploy job)
+
+## CI/CD flow
+
+### App pipeline (`<project>-<env>-app-pipeline`)
+
+1. Source from GitHub via CodeStar connection.
+2. Build (`ci/buildspec.app-build.yml`):
+   - builds Docker image
+   - pushes image to ECR
+   - outputs `out/image-uri.txt`
+3. Deploy (`ci/buildspec.app-deploy.yml`):
+   - connects to EKS
+   - reads app secret JSON from Secrets Manager
+   - creates/updates Kubernetes `wikiread-secrets`
+   - renders `k8s/argocd/application.yaml.tpl` with image URI
+   - applies Argo CD Application and forces refresh
+
+### Infra pipeline (`<project>-<env>-infra-pipeline`)
+
+1. Source from GitHub via CodeStar connection.
+2. Plan (`ci/buildspec.infra-plan.yml`):
+   - `terraform init/fmt/validate/plan`
+   - uploads plan text to S3 (`tf-plans` bucket)
+   - sends SNS email with plan location
+3. Manual approval stage:
+   - reviewer approves/rejects in CodePipeline
+4. Apply (`ci/buildspec.infra-apply.yml`):
+   - `terraform apply -auto-approve`
+
+## SNS approval model
+
+- Terraform plan stage sends notification to `manager_email` using SNS.
+- Email is for notification and plan review link.
+- Actual approve/reject action requires AWS IAM login with `codepipeline:PutApprovalResult`.
+
+## Argo CD and Rollouts
+
+Important: current deploy buildspec assumes Argo CD exists in the cluster.
+
+One-time bootstrap example:
+
+```bash
+helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace
+helm upgrade --install argo-rollouts argo/argo-rollouts -n argo-rollouts --create-namespace
+```
+
+After bootstrap, app deployment is handled by the pipeline + Argo sync.
+
+## Prerequisites
+
+- AWS account and IAM user/role with required permissions
+- GitHub repository access
+- AWS CodeConnections connection to GitHub
+- Terraform >= 1.6
+- AWS CLI + kubectl + helm (for operator actions)
+
+## Initial setup
+
+1. Configure backend resources for Terraform state:
+   - S3 bucket for state
+   - DynamoDB table for state lock
+2. Update backend values in `infra/terraform/versions.tf` for your account/region.
+3. Create environment var file:
+
+```bash
+cp infra/terraform/env/prod-eu-west-2.tfvars.example infra/terraform/env/prod-eu-west-2.tfvars
+```
+
+4. Fill required values:
+   - `repo_owner`, `repo_name`, `repo_branch`
+   - `codestar_connection_arn`
+   - `manager_email`
+   - `db_password`
+   - sizing/scaling variables (`node_instance_types`, min/desired/max, NAT/AZ counts)
+
+5. Run provisioning:
+
+```bash
+cd infra/terraform
+terraform init
+terraform plan -var-file=env/prod-eu-west-2.tfvars
+terraform apply -var-file=env/prod-eu-west-2.tfvars
+```
+
+6. Confirm SNS email subscription.
+7. Update Secrets Manager secret with valid `SECRET_KEY` and `DATABASE_URL`.
+
+## Local development
 
 ```bash
 python3 -m venv .venv
@@ -13,153 +147,25 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-To import old markdown files from `entries/*.md` into DB:
+Optional import from markdown files:
 
 ```bash
 python manage.py import_entries
 ```
 
-## Current app architecture
-
-This repository contains a Django web service (`encyclopedia` app inside `wiki` project), with relational DB support through `DATABASE_URL` (PostgreSQL recommended in production).
-
-## Deployment model (Argo CD + EKS)
-
-This repo now uses Argo-based GitOps deployment:
-
-- `CodePipeline + CodeBuild` builds and pushes container image to ECR.
-- Deploy stage bootstraps/updates:
-  - Argo CD
-  - Argo Rollouts
-  - `wikiread-secrets` from AWS Secrets Manager
-  - Argo CD `Application` (`k8s/argocd/application.yaml.tpl`)
-- Argo CD syncs Kubernetes manifests from this repo (`k8s/base`).
-- Blue/green is handled by Argo Rollouts (`k8s/base/rollout.yaml`).
-
-## Kubernetes manifests
-
-- `k8s/base/namespace.yaml`
-- `k8s/base/configmap.yaml`
-- `k8s/base/service-active.yaml` (public NLB)
-- `k8s/base/service-preview.yaml`
-- `k8s/base/rollout.yaml` (Argo Rollouts blue/green)
-- `k8s/base/hpa.yaml` (horizontal pod autoscaling for the rollout)
-- `k8s/base/kustomization.yaml`
-- `k8s/base/secret.example.yaml` (example only; real secret is generated from Secrets Manager)
-- `k8s/argocd/application.yaml.tpl`
-
-## AWS target design
-
-- App workloads run on EKS worker nodes in private subnets.
-- Database (RDS PostgreSQL) is private (`publicly_accessible = false`) in private DB subnets.
-- Public access to app is through `wikiread-active` Service (internet-facing NLB).
-- Private subnets use NAT for outbound internet when needed.
-
-## Terraform contents
-
-`infra/terraform` provisions:
-
-- VPC, subnets (public/private app/private DB), IGW, NAT
-- EKS cluster + managed node group
-- ECR repository
-- Private RDS PostgreSQL
-- AWS Secrets Manager app secret
-- CodeBuild projects
-- App/infra CodePipelines
-- SNS topic + email subscription + manual approval gate for infra changes
-
-Terraform modules:
-
-- EKS uses `terraform-aws-modules/eks/aws`
-- The rest of the stack is parameterized through variables (not hardcoded) so you can tune counts/sizes per environment.
-
-## Terraform usage
-
-1. Copy vars (single-file option):
-
-```bash
-cp infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars
-```
-
-2. Fill required values in `infra/terraform/terraform.tfvars`.
-
-Alternative environment var files:
-
-- `infra/terraform/env/dev-eu-west-2.tfvars.example`
-- `infra/terraform/env/prod-eu-west-2.tfvars.example`
-
-Use with:
+## Destroy
 
 ```bash
 cd infra/terraform
-terraform init
-terraform plan -var-file=env/prod-eu-west-2.tfvars
-terraform apply -var-file=env/prod-eu-west-2.tfvars
+terraform destroy -var-file=env/prod-eu-west-2.tfvars
 ```
 
-3. Apply:
+If lock exists, clear lock before retry (`terraform force-unlock`).
 
-```bash
-cd infra/terraform
-terraform init
-terraform plan
-terraform apply
-```
+## Security and production hardening
 
-4. Confirm SNS email subscription for `manager_email`.
-
-5. Update Secrets Manager value (`<project>-<env>/app-secrets`) with:
-   - `SECRET_KEY`
-   - `DATABASE_URL`
-
-## CI/CD flow
-
-### App pipeline (`<project>-<env>-app-pipeline`)
-
-1. Source from GitHub via CodeStar connection.
-2. Build (`ci/buildspec.app-build.yml`):
-   - Build Docker image
-   - Push image to ECR
-   - Output built image URI artifact
-3. Deploy (`ci/buildspec.app-deploy.yml`):
-   - Connect to EKS
-   - Install/upgrade Argo CD + Argo Rollouts
-   - Sync Kubernetes secret from Secrets Manager
-   - Render/apply Argo CD Application with the built image URI
-   - Trigger Argo CD refresh
-
-### Infra pipeline (`<project>-<env>-infra-pipeline`)
-
-1. Source from GitHub.
-2. Plan (`ci/buildspec.infra-plan.yml`):
-   - `terraform plan`
-   - Upload plan text to S3
-   - Send SNS email with plan location
-3. Manual approval stage:
-   - Manager approves/rejects
-4. Apply (`ci/buildspec.infra-apply.yml`):
-   - `terraform apply -auto-approve`
-
-## Notes on CodeDeploy
-
-For EKS, this implementation uses Argo CD/Argo Rollouts for deployments and blue/green control. CodeDeploy remains unnecessary in this path.
-
-## Helm usage
-
-Yes, Helm is used in `ci/buildspec.app-deploy.yml` to install/upgrade:
-
-- Argo CD chart
-- Argo Rollouts chart
-
-Why Helm helps here:
-
-- versioned installs/upgrades
-- reusable chart values/config
-- repeatable cluster bootstrapping from CI
-
-## Recommended hardening
-
-- Replace `AdministratorAccess` IAM policy for CodeBuild with least-privilege IAM.
-- Restrict EKS API CIDRs (`allowed_cidrs_for_eks_api`).
-- Add remote Terraform state backend (S3 + DynamoDB lock).
-- Add HTTPS/ACM/WAF and external DNS/Route53 integration.
+- Replace broad `AdministratorAccess` on CodeBuild role with least privilege.
+- Restrict `allowed_cidrs_for_eks_api` from `0.0.0.0/0`.
+- Add HTTPS (ACM + ingress/load balancer config).
+- Add WAF, backup/DR policy, and secret rotation strategy.
+- Add policy checks and tests in pipeline before apply/deploy.
