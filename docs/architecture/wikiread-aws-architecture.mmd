@@ -1,0 +1,73 @@
+%% Wikiread Portfolio Architecture (AWS + GitOps)
+flowchart TB
+  user([User / Browser])
+  gh([GitHub Repo\nWikiread])
+
+  subgraph aws[AWS Cloud (eu-west-2)]
+    cp1[CodePipeline\nInfra Pipeline]
+    cb1[CodeBuild\nTerraform Plan]
+    sns[SNS Topic\nPlan Notification]
+    appr[Manual Approval\nManager]
+    cb2[CodeBuild\nTerraform Apply]
+
+    cp2[CodePipeline\nApp Pipeline]
+    cb3[CodeBuild\nDocker Build/Push]
+    ecr[ECR\nApp Image Repository]
+    cb4[CodeBuild\nArgo App Update]
+
+    s3state[S3\nTerraform State]
+    ddb[DynamoDB\nState Lock]
+    s3plans[S3\nTerraform Plan Artifacts]
+
+    sm[Secrets Manager\nApp Secrets]
+
+    subgraph net[VPC]
+      igw[Internet Gateway]
+      nat[NAT Gateway]
+      pub[Public Subnets]
+      pvtapp[Private App Subnets]
+      pvtdb[Private DB Subnets]
+    end
+
+    subgraph eks[EKS Cluster]
+      argocd[Argo CD]
+      rollout[Argo Rollouts]
+      active[Service\nwikiread-active\nLoadBalancer (NLB)]
+      preview[Service\nwikiread-preview\nClusterIP]
+      pods[Wikiread Pods\n(Django)]
+      hpa[HPA]
+      metrics[metrics-server addon]
+    end
+
+    rds[RDS PostgreSQL\nPrivate]
+    cw[CloudWatch\nObservability Addon]
+  end
+
+  %% Source and Infra pipeline
+  gh --> cp1 --> cb1
+  cb1 --> s3plans
+  cb1 --> sns --> appr --> cb2
+  cb2 --> s3state
+  cb2 --> ddb
+  cb2 --> net
+  cb2 --> eks
+  cb2 --> rds
+  cb2 --> sm
+
+  %% App pipeline and GitOps
+  gh --> cp2 --> cb3 --> ecr
+  cp2 --> cb4
+  cb4 --> sm
+  cb4 --> argocd
+  cb4 -. updates app image .-> argocd
+  argocd --> rollout --> pods
+  rollout --> active
+  rollout --> preview
+  hpa --> rollout
+  metrics --> hpa
+  cw --> eks
+
+  %% Runtime flow
+  user --> active --> pods --> rds
+  pods --> sm
+  pods --> nat --> igw

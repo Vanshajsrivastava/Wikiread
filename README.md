@@ -27,6 +27,12 @@ Terraform in `infra/terraform` creates:
 - Argo CD continuously syncs desired Kubernetes state from this Git repo.
 - Argo Rollouts handles blue/green delivery using active and preview services.
 
+## Architecture diagram
+
+- Diagram source: `docs/architecture/wikiread-aws-architecture.mmd`
+- Diagram notes: `docs/architecture/README.md`
+- Render/export: open the `.mmd` file in https://mermaid.live and export SVG/PNG for your portfolio.
+
 ## Repository structure
 
 - `infra/terraform`: Infrastructure as Code
